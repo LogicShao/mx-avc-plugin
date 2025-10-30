@@ -6,6 +6,9 @@ import {APIClient} from "./src/api";
 import {FileWriter} from "./src/fileWriter";
 import {AutoVoiceModal} from "./src/modals/AutoVoiceModal";
 import {SummarizeModal} from "./src/modals/SummarizeModal";
+import {AudioProcessModal} from "./src/modals/AudioProcessModal";
+import {BatchProcessModal} from "./src/modals/BatchProcessModal";
+import {SubtitleModal} from "./src/modals/SubtitleModal";
 import {AutoVoiceSettingTab} from "./src/settingTab";
 
 /**
@@ -35,6 +38,24 @@ export class AutoVoicePlugin extends Plugin {
       id: "summarize-text",
       name: "对文本进行学术总结",
       callback: () => new SummarizeModal(this.app, this).open(),
+    });
+
+    this.addCommand({
+      id: "process-audio",
+      name: "处理音频文件",
+      callback: () => new AudioProcessModal(this.app, this).open(),
+    });
+
+    this.addCommand({
+      id: "batch-process",
+      name: "批量处理视频",
+      callback: () => new BatchProcessModal(this.app, this).open(),
+    });
+
+    this.addCommand({
+      id: "generate-subtitle",
+      name: "生成视频字幕",
+      callback: () => new SubtitleModal(this.app, this).open(),
     });
 
     this.addCommand({

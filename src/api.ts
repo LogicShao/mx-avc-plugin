@@ -150,4 +150,141 @@ export class APIClient {
       await new Promise((r) => setTimeout(r, intervalMs));
     }
   }
+
+  /**
+   * 处理音频文件（注意：Obsidian 的 requestUrl 不直接支持 FormData，需特殊处理）
+   */
+  async processAudio(fileData: ArrayBuffer, fileName: string, options?: ProcessOptions): Promise<any> {
+    const textOnly = options?.textOnly ?? this.settings.textOnly;
+    const summarize = options?.summarize ?? this.settings.summarize;
+    const temperature = options?.temperature ?? (summarize ? 0.7 : this.settings.llmTemperature);
+    const maxTokens = options?.maxTokens ?? (summarize ? 4000 : this.settings.llmMaxTokens);
+
+    const apiUrl = `${this.settings.apiBaseUrl.replace(/\/$/, '')}/api/v1/process/audio`;
+
+    // 构造 multipart/form-data
+    const boundary = '----ObsidianFormBoundary' + Date.now();
+    const parts: Uint8Array[] = [];
+    const encoder = new TextEncoder();
+
+    // 添加表单字段
+    const fields = {
+      llm_api: 'deepseek-chat',
+      temperature: temperature.toString(),
+      max_tokens: maxTokens.toString(),
+      text_only: textOnly.toString(),
+      summarize: (textOnly && summarize).toString(),
+    };
+
+    for (const [key, value] of Object.entries(fields)) {
+      parts.push(encoder.encode(`--${boundary}\r\n`));
+      parts.push(encoder.encode(`Content-Disposition: form-data; name="${key}"\r\n\r\n`));
+      parts.push(encoder.encode(`${value}\r\n`));
+    }
+
+    // 添加文件
+    parts.push(encoder.encode(`--${boundary}\r\n`));
+    parts.push(encoder.encode(`Content-Disposition: form-data; name="file"; filename="${fileName}"\r\n`));
+    parts.push(encoder.encode(`Content-Type: application/octet-stream\r\n\r\n`));
+    parts.push(new Uint8Array(fileData));
+    parts.push(encoder.encode(`\r\n--${boundary}--\r\n`));
+
+    // 合并所有部分
+    const totalLength = parts.reduce((sum, part) => sum + part.length, 0);
+    const body = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const part of parts) {
+      body.set(part, offset);
+      offset += part.length;
+    }
+
+    try {
+      const response = await requestUrl({
+        url: apiUrl,
+        method: "POST",
+        headers: {
+          "Content-Type": `multipart/form-data; boundary=${boundary}`,
+        },
+        body: body.buffer,
+      });
+      return response.json;
+    } catch (error) {
+      console.error(error);
+      throw new Error("音频处理 API 请求失败：" + (error?.message ? ` ${error.message}` : ""));
+    }
+  }
+
+  /**
+   * 批量处理视频
+   */
+  async processBatch(urls: string[], options?: ProcessOptions): Promise<any> {
+    const textOnly = options?.textOnly ?? this.settings.textOnly;
+    const summarize = options?.summarize ?? this.settings.summarize;
+    const temperature = options?.temperature ?? (summarize ? 0.7 : this.settings.llmTemperature);
+    const maxTokens = options?.maxTokens ?? (summarize ? 4000 : this.settings.llmMaxTokens);
+
+    const apiUrl = `${this.settings.apiBaseUrl.replace(/\/$/, '')}/api/v1/process/batch`;
+    try {
+      const response = await requestUrl({
+        url: apiUrl,
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          urls,
+          llm_api: "deepseek-chat",
+          temperature,
+          max_tokens: maxTokens,
+          text_only: textOnly,
+          summarize: textOnly && summarize,
+        }),
+      });
+      return response.json;
+    } catch (error) {
+      console.error(error);
+      throw new Error("批量处理 API 请求失败：" + (error?.message ? ` ${error.message}` : ""));
+    }
+  }
+
+  /**
+   * 生成视频字幕
+   */
+  async processSubtitle(fileData: ArrayBuffer, fileName: string): Promise<any> {
+    const apiUrl = `${this.settings.apiBaseUrl.replace(/\/$/, '')}/api/v1/process/subtitle`;
+
+    // 构造 multipart/form-data
+    const boundary = '----ObsidianFormBoundary' + Date.now();
+    const parts: Uint8Array[] = [];
+    const encoder = new TextEncoder();
+
+    // 添加文件
+    parts.push(encoder.encode(`--${boundary}\r\n`));
+    parts.push(encoder.encode(`Content-Disposition: form-data; name="file"; filename="${fileName}"\r\n`));
+    parts.push(encoder.encode(`Content-Type: application/octet-stream\r\n\r\n`));
+    parts.push(new Uint8Array(fileData));
+    parts.push(encoder.encode(`\r\n--${boundary}--\r\n`));
+
+    // 合并所有部分
+    const totalLength = parts.reduce((sum, part) => sum + part.length, 0);
+    const body = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const part of parts) {
+      body.set(part, offset);
+      offset += part.length;
+    }
+
+    try {
+      const response = await requestUrl({
+        url: apiUrl,
+        method: "POST",
+        headers: {
+          "Content-Type": `multipart/form-data; boundary=${boundary}`,
+        },
+        body: body.buffer,
+      });
+      return response.json;
+    } catch (error) {
+      console.error(error);
+      throw new Error("字幕生成 API 请求失败：" + (error?.message ? ` ${error.message}` : ""));
+    }
+  }
 }

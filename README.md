@@ -31,10 +31,24 @@
 
 ## 安装方法
 
+### 用户安装
+
+1. 在 [GitHub Releases](https://github.com/LogicShao/mx-avc-plugin/releases) 下载最新版本的 ZIP 文件
+2. 解压到你的 Vault 插件目录：
+   ```
+   VaultFolder/.obsidian/plugins/mx-avc-plugin/
+   ```
+3. 在 Obsidian 中启用插件：
+  - 打开 Obsidian 设置
+  - 进入「第三方插件」
+  - 关闭「安全模式」
+  - 在「已安装插件」中找到「Max Auto Voice Collation」
+  - 点击启用
+
 ### 前置要求
 
 - Obsidian v0.15.0 或更高版本
-- Node.js v16 或更高版本
+- Node.js v16 或更高版本（仅开发需要）
 - 后端 API 服务（AutoVoiceCollation）
 
 ### 开发安装
@@ -53,6 +67,12 @@ cd mx-avc-plugin
 npm install
 ```
 
+**注意**：项目使用 `package-lock.json` 确保依赖版本一致性，推荐使用 `npm ci` 进行更快速的安装：
+
+```bash
+npm ci
+```
+
 3. 编译插件：
 
 ```bash
@@ -66,13 +86,11 @@ npm run build
   - 在「已安装插件」中找到「Max Auto Voice Collation」
   - 点击启用
 
-### 手动安装
+**开发建议**：
 
-将 `main.js`、`manifest.json` 和 `styles.css` 复制到你的 Vault 目录：
-
-```
-VaultFolder/.obsidian/plugins/mx-avc-plugin/
-```
+- 项目使用 `package-lock.json` 锁定依赖版本，已提交到仓库
+- 建议使用 `npm ci` 而非 `npm install`，以确保依赖版本完全一致
+- 这与 GitHub Actions 的构建流程保持一致
 
 ## 使用方法
 
@@ -164,15 +182,26 @@ python webui.py
 
 ```
 mx-avc-plugin/
-├── main.ts              # 主插件代码
-├── main.js              # 编译后的插件
-├── manifest.json        # 插件元数据
-├── package.json         # 项目依赖配置
-├── tsconfig.json        # TypeScript 配置
-├── esbuild.config.mjs   # 构建配置
-├── styles.css           # 样式文件
-├── versions.json        # 版本兼容性记录
-└── README.md            # 本文档
+├── .github/
+│   └── workflows/
+│       └── release.yml      # GitHub Actions 自动发布配置
+├── src/
+│   ├── api.ts               # API 调用相关代码
+│   └── modals/              # 模态框组件
+│       ├── AudioProcessModal.ts
+│       ├── BatchProcessModal.ts
+│       └── SubtitleModal.ts
+├── main.ts                  # 主插件代码
+├── main.js                  # 编译后的插件
+├── manifest.json            # 插件元数据
+├── package.json             # 项目依赖配置
+├── package-lock.json        # 依赖版本锁定文件
+├── tsconfig.json            # TypeScript 配置
+├── esbuild.config.mjs       # 构建配置
+├── build-release.mjs        # 打包发布脚本
+├── styles.css               # 样式文件
+├── versions.json            # 版本兼容性记录
+└── README.md                # 本文档
 ```
 
 ### 开发脚本
@@ -184,12 +213,63 @@ npm run dev
 # 生产构建
 npm run build
 
+# 打包文件到 build 目录并创建 ZIP 文件
+npm run package
+
+# 构建并打包（推荐用于发布）
+npm run release
+
 # 版本升级
 npm run version
 
 # 构建并复制到 Vault（需配置路径）
 npm run build-and-copy
 ```
+
+**注意**：`npm run package` 会：
+
+- 复制 `main.js`、`manifest.json`、`styles.css` 到 `build/` 目录
+- 自动将这些文件打包成 `mx-avc-plugin.zip`
+
+### 发布流程
+
+本项目已配置 GitHub Actions 自动发布流程：
+
+1. **更新版本号**：
+   ```bash
+   npm version patch  # 更新补丁版本 (1.0.0 -> 1.0.1)
+   npm version minor  # 更新次版本 (1.0.0 -> 1.1.0)
+   npm version major  # 更新主版本 (1.0.0 -> 2.0.0)
+   ```
+
+2. **推送标签到 GitHub**：
+   ```bash
+   git push && git push --tags
+   ```
+
+3. **自动发布**：
+  - GitHub Actions 自动触发（`.github/workflows/release.yml`）
+  - 执行以下步骤：
+    - 安装依赖（使用 `npm ci` 确保版本一致）
+    - 构建插件（`npm run build`）
+    - 打包文件（`npm run package`）
+    - 创建带版本号的 ZIP 文件
+    - 创建 GitHub Release
+    - 上传以下文件：
+      - `main.js`
+      - `manifest.json`
+      - `styles.css`
+      - `mx-avc-plugin-{版本号}.zip`（包含上述三个文件）
+
+4. **手动打包**（可选）：
+   ```bash
+   npm run release  # 构建并打包到 build 目录
+   ```
+
+**依赖说明**：
+
+- 打包脚本使用 `archiver` 库创建 ZIP 文件
+- 已在 `devDependencies` 中配置，无需手动安装
 
 ### API 端点
 
@@ -223,10 +303,11 @@ npm run build-and-copy
 
 ## 技术栈
 
-- TypeScript
-- Obsidian Plugin API
-- esbuild（构建工具）
-- Node.js fs/path（文件系统操作）
+- **核心**：TypeScript, Obsidian Plugin API
+- **构建工具**：esbuild
+- **打包工具**：archiver (ZIP 文件创建)
+- **文件系统**：Node.js fs/path
+- **CI/CD**：GitHub Actions
 
 ## 许可证
 
@@ -252,6 +333,8 @@ LogicShao
 - 支持多种处理模式
 - 完善的设置界面
 - 文件名自定义选项
+- 添加自动打包脚本和 GitHub Actions 工作流
+- 支持自动创建发布 ZIP 文件
 
 ## 相关项目
 

@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "package": "node build-release.mjs",
+    "release": "npm run build && npm run package",
     "version": "node version-bump.mjs && git add manifest.json versions.json",
     "copy-dist-to-vault": "powershell -NoProfile -Command \"New-Item -ItemType Directory -Force -Path 'D:\\doc\\Obsidian Vault\\avc\\.obsidian\\plugins\\mx-avc-plugin' >$null; Copy-Item -Path 'main.js','manifest.json','styles.css' -Destination 'D:\\doc\\Obsidian Vault\\avc\\.obsidian\\plugins\\mx-avc-plugin' -Force\"",
     "build-and-copy": "npm run build && npm run copy-dist-to-vault"
@@ -17,6 +19,7 @@
     "@types/node": "^16.11.6",
     "@typescript-eslint/eslint-plugin": "5.29.0",
     "@typescript-eslint/parser": "5.29.0",
+    "archiver": "^7.0.1",
     "builtin-modules": "3.3.0",
     "esbuild": "0.17.3",
     "obsidian": "latest",
